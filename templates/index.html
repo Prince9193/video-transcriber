@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Transcriber and Translator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Video Transcriber and Translator</h1>
+        
+        <form id="translationForm" enctype="multipart/form-data">
+            <div class="upload-section">
+                <h2>Upload Video</h2>
+                <input type="file" id="videoInput" name="video" accept="video/*" required>
+                <p class="note">Supported formats: MP4, AVI, MOV, WMV(It can translate only 20 seconds video)</p>
+            </div>
+
+            <div class="language-section">
+                <h2>Select Target Language</h2>
+                <select id="languageSelect" name="language" required>
+                    <option value="">Select a language...</option>
+                    {% for code, name in languages.items() %}
+                    <option value="{{ code }}">{{ name }} ({{ code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="action-section">
+                <button type="submit" id="translateButton" disabled>Translate Video</button>
+            </div>
+        </form>
+
+        <div id="status" class="status"></div>
+        <div id="downloadSection" class="download-section" style="display: none;">
+            <h2>Translation Complete!</h2>
+            <button id="downloadButton" class="download-button">Download Translated Video</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html> 
