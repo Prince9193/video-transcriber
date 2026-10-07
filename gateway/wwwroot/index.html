@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Translator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    form, .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    label { display: block; margin: .6rem 0 .25rem; font-weight: 600; }
+    select, input[type=file], button { width: 100%; padding: .6rem; font-size: 1rem; box-sizing: border-box; }
+    button { margin-top: 1rem; cursor: pointer; border: 0; border-radius: 8px; background: #2563eb; color: #fff; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid #eee; }
+    .badge { padding: .15rem .6rem; border-radius: 999px; font-size: .8rem; color: #fff; }
+    .Pending { background: #6b7280; } .Processing { background: #d97706; } .Done { background: #16a34a; } .Failed { background: #dc2626; }
+    @media (max-width: 480px) { body { margin: 1rem auto; } }
+  </style>
+</head>
+<body>
+  <h1>Video Translator</h1>
+  <form id="form">
+    <label for="video">Video (MP4, AVI, MOV, WMV)</label>
+    <input id="video" name="video" type="file" accept="video/*" required>
+    <label for="language">Translate to</label>
+    <select id="language" name="language" required><option value="">Loading languages...</option></select>
+    <button id="submit" type="submit" disabled>Translate</button>
+  </form>
+  <div id="message"></div>
+  <h2 style="font-size:1.1rem">Jobs</h2>
+  <div id="jobs" class="card">No jobs yet.</div>
+
+<script>
+const form = document.getElementById('form');
+const video = document.getElementById('video');
+const language = document.getElementById('language');
+const submit = document.getElementById('submit');
+const message = document.getElementById('message');
+const jobsEl = document.getElementById('jobs');
+
+function updateButton() { submit.disabled = !(video.files.length && language.value); }
+video.addEventListener('change', updateButton);
+language.addEventListener('change', updateButton);
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[character]));
+}
+
+async function loadLanguages() {
+  try {
+    const res = await fetch('/api/languages');
+    if (!res.ok) throw new Error((await res.json()).message);
+    const langs = await res.json();
+    language.innerHTML = '<option value="">Select a language</option>' +
+      Object.entries(langs).map(([c, n]) =>
+        `<option value="${escapeHtml(c)}">${escapeHtml(n)}</option>`).join('');
+  } catch (e) {
+    language.innerHTML = '<option value="">Unavailable</option>';
+    message.textContent = 'Could not load languages: ' + e.message;
+  }
+}
+
+async function refreshJobs() {
+  const res = await fetch('/api/jobs');
+  const jobs = await res.json();
+  if (!jobs.length) { jobsEl.textContent = 'No jobs yet.'; return false; }
+  jobsEl.innerHTML = jobs.map(j => `
+    <div class="row">
+      <span>${escapeHtml(j.originalFileName)} &rarr; ${escapeHtml(j.language)}</span>
+      <span>
+        <span class="badge ${escapeHtml(j.status)}">${escapeHtml(j.status)}</span>
+        ${j.downloadUrl ? `<a href="${escapeHtml(j.downloadUrl)}">Download</a>` : ''}
+        ${j.error ? `<small title="${escapeHtml(j.error)}"> (error)</small>` : ''}
+      </span>
+    </div>`).join('');
+  return jobs.some(j => j.status === 'Pending' || j.status === 'Processing');
+}
+
+let polling = false;
+async function poll() {
+  if (polling) return;
+  polling = true;
+  while (await refreshJobs()) await new Promise(r => setTimeout(r, 2000));
+  polling = false;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  submit.disabled = true;
+  message.textContent = 'Uploading...';
+  const res = await fetch('/api/jobs', { method: 'POST', body: new FormData(form) });
+  const body = await res.json();
+  message.textContent = res.ok ? 'Job queued. You can leave this page open while it processes.' : body.message;
+  updateButton();
+  poll();
+});
+
+loadLanguages();
+poll();
+</script>
+</body>
+</html>

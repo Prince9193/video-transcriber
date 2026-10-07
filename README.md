@@ -60,6 +60,28 @@ http://localhost:5000
 4. Wait for the translation process to complete
 5. Download the translated video with subtitles
 
+## ASP.NET Core gateway
+
+The optional `gateway/` application preserves the Flask pipeline and adds an asynchronous upload/job API with a small web UI. Keep the Flask app running, then start the gateway in a second terminal:
+
+```bash
+python server.py
+cd gateway
+dotnet run --urls http://localhost:5100
+```
+
+Open `http://localhost:5100` to use the gateway. If the full Flask dependencies are not available, run `python tools/mock_flask.py` from `gateway/` instead of `python server.py` to exercise the gateway with a test backend.
+
+Gateway API:
+
+- `POST /api/jobs` — multipart form with `video` and `language`; returns `202 Accepted` with a job.
+- `GET /api/jobs` — list jobs.
+- `GET /api/jobs/{id}` — poll a job (`Pending`, `Processing`, `Done`, or `Failed`).
+- `GET /api/jobs/{id}/download` — download a completed translation.
+- `GET /api/languages` — proxy the language list from Flask.
+
+The gateway requires the .NET 8 SDK. Its Flask URL, timeout, storage folders, and upload limit are configurable in `gateway/appsettings.json`.
+
 ## Supported Languages
 
 The application supports translation to the following languages:

@@ -1,0 +1,6 @@
+bin/
+obj/
+uploads/
+outputs/
+mock_uploads/
+__pycache__/
